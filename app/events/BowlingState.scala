@@ -45,13 +45,11 @@ case class WaitingForPlayer(name:String, pinsUp:Set[Int]=(1 to 10).toSet, rollRe
 
     case PreciseRoll(dropped) =>
       val event = Scoring.score((rollRecord :+ dropped.size).toList) match {
-        case ClosedFrame(scored) if scored.size == 10 => GameOver(scored)
-        case ClosedFrame(scored) => FrameEnded(pinsUp -- dropped)
+        case ClosedFrame(scored)         => if scored.size == 10 then GameOver(scored) else FrameEnded(pinsUp -- dropped)
         case OpenFrame(scored, unscored) => PinsDropped(dropped)
       }
       Emit(event) onPersist { es =>
-        svcs.resetLane(0) thenKeep
-          es.sequence(svcs.notifyPlayer(name, s"$_"))
+        svcs.resetLane(0) thenKeep es.allDo(svcs notifyPlayer (name, s"$_"))
       }
   }
 
